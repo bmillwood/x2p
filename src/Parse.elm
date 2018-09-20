@@ -53,6 +53,20 @@ var frag =
     "I" :: rest -> Code.SelfDot rest
     _ -> Code.Var frag
 
+call : Sentence.Fragment -> Code.Call
+call frag =
+  let
+      (con, rest) =
+        case frag of
+          "I" :: r -> (Code.SelfDot, r)
+          _ -> (Code.Var, frag)
+      noArg = Code.Call (con rest) []
+  in
+  case shatterList (\w -> w == "I") rest of
+    [] -> noArg
+    [_] -> noArg
+    r :: rs -> Code.Call (con r) (List.map (Code.Value << Code.SelfDot) rs)
+
 conditionExpr : Sentence.Fragment -> Code.Condition
 conditionExpr frag =
   let
@@ -68,7 +82,7 @@ conditionExpr frag =
   case breakList (\w -> Set.member w equalities) expFrag of
     ([], []) -> Code.CondExpr (Code.Bool True)
     (_, []) ->
-      Code.CondExpr (Code.ExprCall (Code.Call (var frag) []))
+      Code.CondExpr (Code.ExprCall (call frag))
     (left, _ :: right) ->
       Code.Equal
         (Code.Value (var left))
@@ -112,7 +126,7 @@ parse fragments =
                 f :: fs ->
                   if List.all String.isEmpty f
                   then (Code.Pass, fs)
-                  else (Code.StmtCall (Code.Call (var f) []), fs)
+                  else (Code.StmtCall (call f), fs)
         in
         prependInteresting
           [Code.If condResult.interesting [stmt]]
