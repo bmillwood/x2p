@@ -93,8 +93,14 @@ parse fragments =
       then 
         let
             condResult = condition fws frags
+            dropInitialThen fs =
+              case fs of
+                [] -> []
+                [] :: r -> dropInitialThen r
+                ("then" :: f) :: r -> f :: r
+                _ -> fs
             (stmt, unparsed) =
-              case condResult.thenBoring of
+              case dropInitialThen condResult.thenBoring of
                 [] -> (Code.Pass, [])
                 f :: fs -> (Code.StmtCall f, fs)
         in
