@@ -9,6 +9,8 @@ import Html.Attributes
 import Html.Events
 
 import Corpus
+import Parse
+import Python
 import Sentence
 
 type alias Model =
@@ -50,13 +52,24 @@ fragView words =
     (List.map wordView words |> List.intersperse (Html.text " "))
 
 sentenceView : Sentence.Sentence -> Html a
-sentenceView fragments =
+sentenceView sentence =
+  let
+      results = Parse.parse sentence
+      resultView { interesting, thenBoring } =
+        Html.span 
+          []
+          (Html.pre [] [Html.text (Python.code interesting)]
+            :: List.map fragView thenBoring)
+  in
   Html.div
     [ Html.Attributes.style "border" "0.1em solid red"
     , Html.Attributes.style "margin" "0.3em"
     , Html.Attributes.style "padding" "0.3em"
     ]
-    (List.map fragView fragments)
+    (List.concat
+      [ List.map fragView results.before
+      , List.map resultView results.results
+      ])
 
 view : Model -> Html Msg
 view { sentences } =
