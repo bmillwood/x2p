@@ -47,8 +47,14 @@ shatterList p xs =
     (left, []) -> [left]
     (left, _ :: right) -> left :: shatterList p right
 
-conditionAtom : Sentence.Fragment -> Code.Condition
-conditionAtom frag =
+var : Sentence.Fragment -> Code.Name
+var frag =
+  case frag of
+    "I" :: rest -> Code.SelfDot rest
+    _ -> Code.Var frag
+
+conditionExpr : Sentence.Fragment -> Code.Condition
+conditionExpr frag =
   let
       expandContraction w =
         if String.right 3 w == "'re"
@@ -61,18 +67,18 @@ conditionAtom frag =
   in
   case breakList (\w -> Set.member w equalities) expFrag of
     (_, []) ->
-      Code.CondAtom (Code.ExprCall (Code.Call frag []))
+      Code.CondExpr (Code.ExprCall (Code.Call (var frag) []))
     (left, _ :: right) ->
       Code.Equal
-        (Code.Value left)
-        (Code.Value right)
+        (Code.Value (var left))
+        (Code.Value (var right))
 
 conditionFrag : Sentence.Fragment -> Code.Condition
 conditionFrag frag =
   case shatterList (\w -> w == "and") frag of
-    [] -> Code.CondAtom (Code.Value ["True"])
-    [one] -> conditionAtom one
-    conjuncts -> Code.And (List.map conditionAtom conjuncts)
+    [] -> Code.CondExpr (Code.Bool True)
+    [one] -> conditionExpr one
+    conjuncts -> Code.And (List.map conditionExpr conjuncts)
 
 condition
   : Sentence.Fragment
@@ -102,7 +108,7 @@ parse fragments =
             (stmt, unparsed) =
               case dropInitialThen condResult.thenBoring of
                 [] -> (Code.Pass, [])
-                f :: fs -> (Code.StmtCall (Code.Call f []), fs)
+                f :: fs -> (Code.StmtCall (Code.Call (var f) []), fs)
         in
         prependInteresting
           [Code.If condResult.interesting [stmt]]

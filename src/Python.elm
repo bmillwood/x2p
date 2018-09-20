@@ -2,8 +2,8 @@ module Python exposing (code)
 
 import Code
 
-name : Code.Name -> String
-name n =
+nameFromComponents : List String -> String
+nameFromComponents n =
   case List.map (String.filter Char.isAlphaNum) n of
     [] -> "None"
     first :: rest ->
@@ -16,6 +16,12 @@ name n =
       String.toLower first :: List.map titleCase rest
       |> String.concat
 
+name : Code.Name -> String
+name n =
+  case n of
+    Code.Var cs -> nameFromComponents cs
+    Code.SelfDot cs -> "self." ++ nameFromComponents cs
+
 call : Code.Call -> String
 call (Code.Call n args) =
   name n ++ "(" ++ String.join ", " (List.map expr args) ++ ")"
@@ -25,6 +31,8 @@ expr e =
   case e of
     Code.Value n -> name n
     Code.ExprCall c -> call c
+    Code.Bool True -> "True"
+    Code.Bool False -> "False"
 
 condition : Code.Condition -> String
 condition cond =
@@ -34,7 +42,7 @@ condition cond =
         |> String.join " "
   in
   case cond of
-    Code.CondAtom e -> expr e
+    Code.CondExpr e -> expr e
     Code.Equal e1 e2 -> expr e1 ++ " == " ++ expr e2
     Code.And conds -> op "and" conds
     Code.Or conds -> op "or" conds

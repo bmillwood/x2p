@@ -1,17 +1,18 @@
 module Code exposing (..)
 
-import Sentence
-
-type alias Name = Sentence.Fragment
+type Name
+  = Var (List String)
+  | SelfDot (List String)
 
 type Call = Call Name (List Expr)
 
 type Expr
   = ExprCall Call
   | Value Name
+  | Bool Bool
 
 type Condition
-  = CondAtom Expr
+  = CondExpr Expr
   | Equal Expr Expr
   | And (List Condition)
   | Or (List Condition)
