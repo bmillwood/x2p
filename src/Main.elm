@@ -16,16 +16,19 @@ import Sentence
 
 type alias Model =
   { sentences : List Sentence.Sentence
+  , debug : Bool
   , language  : Language.Language
   }
 
 type Msg
   = Input String
+  | SetDebug Bool
   | SetLanguage Language.Language
 
 init : () -> (Model, Cmd Msg)
 init () =
   ( { sentences = Sentence.tokenize Corpus.testCases
+    , debug = False
     , language = Language.init
     }
   , Cmd.none
@@ -40,8 +43,12 @@ fragsView terminator frags =
   |> Tuple.first
   |> Html.text
 
-sentenceRow : Language.Language -> Sentence.Sentence -> Html a
-sentenceRow lang sentence =
+sentenceRow
+  : { debug : Bool }
+ -> Language.Language
+ -> Sentence.Sentence
+ -> Html a
+sentenceRow { debug } lang sentence =
   let
       (fragments, terminator) = sentence
       results = Parse.parse fragments
@@ -53,23 +60,31 @@ sentenceRow lang sentence =
           ]
       isBoring = List.isEmpty results.results
   in
-  Html.tr []
-    [ Html.td
-        (if isBoring
-        then [Html.Attributes.style "color" "gray"]
-        else [])
-        [Html.text (Sentence.untokenize [sentence])]
-    , Html.td [] (
-        if isBoring
-        then []
-        else
-          (fragsView "" results.before
-            :: List.map resultView results.results)
-        )
-    ]
+  Html.tr [] (
+      [ [ Html.td
+          (if isBoring
+          then [Html.Attributes.style "color" "gray"]
+          else [])
+          [Html.text (Sentence.untokenize [sentence])]
+        ]
+      , if debug
+        then
+          [ Html.text (Debug.toString (List.map .interesting results.results))
+          ]
+        else []
+      , [ Html.td [] (
+          if isBoring
+          then []
+          else
+            (fragsView "" results.before
+              :: List.map resultView results.results)
+          )
+        ]
+      ] |> List.concat
+    )
 
 view : Model -> Html Msg
-view { sentences, language } =
+view { sentences, debug, language } =
   let
       radio lang =
         let
@@ -88,6 +103,20 @@ view { sentences, language } =
             [ Html.Attributes.for name ]
             [ Html.text name ]
         ]
+      debugCheckbox =
+        [ Html.br [] []
+        , Html.input
+            [ Html.Attributes.type_ "checkbox"
+            , Html.Attributes.name "debug"
+            , Html.Attributes.value "debug"
+            , Html.Attributes.checked debug
+            , Html.Events.onCheck SetDebug
+            ]
+            []
+        , Html.label
+            [ Html.Attributes.for "debug" ]
+            [ Html.text "Debug mode" ]
+        ]
   in
   Html.div
     [ Html.Attributes.style "background-color" "black"
@@ -104,21 +133,25 @@ view { sentences, language } =
             [ Html.text (Sentence.untokenize sentences)
             ]
             :: List.concatMap radio Language.all
+            ++ debugCheckbox
         )
-    , Html.table [] (List.map (sentenceRow language) sentences)
+    , Html.table []
+        (List.map (sentenceRow { debug = debug } language) sentences)
     ]
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
-  case msg of
-    Input input ->
-      ( { model | sentences = Sentence.tokenize input }
-      , Cmd.none
-      )
-    SetLanguage language ->
-      ( { model | language = language }
-      , Cmd.none
-      )
+  let
+      newModel =
+        case msg of
+          Input input ->
+            { model | sentences = Sentence.tokenize input }
+          SetDebug debug ->
+            { model | debug = debug }
+          SetLanguage language ->
+            { model | language = language }
+  in
+  (newModel, Cmd.none)
 
 subscriptions : Model -> Sub Msg
 subscriptions _ = Sub.none
