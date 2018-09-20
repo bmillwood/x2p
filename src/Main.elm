@@ -2,6 +2,7 @@ module Main exposing (main)
 
 import Set
 import String
+import Tuple
 
 import Browser
 import Html exposing (Html)
@@ -25,65 +26,61 @@ init () =
   , Cmd.none
   )
 
-wordView : Sentence.Word -> Html a
-wordView word =
-  let
-      keywords = Set.fromList ["if", "while", "for", "unless"]
-      fixedAttributes =
-        [ Html.Attributes.style "border" "0.1em solid blue"
-        ]
-      dynamicAttributes =
-        if Set.member (String.toLower word) keywords
-        then [ Html.Attributes.style "background-color" "salmon" ]
-        else []
-  in
-  Html.span
-    (fixedAttributes ++ dynamicAttributes)
-    [ Html.text word
-    ]
+fragsView : Sentence.Terminator -> List Sentence.Fragment -> Html a
+fragsView terminator frags =
+  List.foldr
+    (\frag (part, term) -> (String.join " " frag ++ term ++ part, ", "))
+    ("", terminator)
+    frags
+  |> Tuple.first
+  |> Html.text
 
-fragView : Sentence.Fragment -> Html a
-fragView words =
-  Html.span
-    [ Html.Attributes.style "border" "0.1em solid lightgreen"
-    , Html.Attributes.style "margin" "0.2em"
-    , Html.Attributes.style "padding" "0.2em"
-    ]
-    (List.map wordView words |> List.intersperse (Html.text " "))
-
-sentenceView : Sentence.Sentence -> Html a
-sentenceView sentence =
+sentenceRow : Sentence.Sentence -> Html a
+sentenceRow sentence =
   let
-      results = Parse.parse sentence
+      (fragments, terminator) = sentence
+      results = Parse.parse fragments
       resultView { interesting, thenBoring } =
         Html.span 
           []
-          (Html.pre [] [Html.text (Python.code interesting)]
-            :: List.map fragView thenBoring)
+          [ Html.pre [] [Html.text (Python.code interesting)]
+          , fragsView terminator thenBoring
+          ]
+      isBoring = List.isEmpty results.results
   in
-  Html.div
-    [ Html.Attributes.style "border" "0.1em solid red"
-    , Html.Attributes.style "margin" "0.3em"
-    , Html.Attributes.style "padding" "0.3em"
+  Html.tr []
+    [ Html.td
+        (if isBoring
+        then [Html.Attributes.style "color" "gray"]
+        else [])
+        [Html.text (Sentence.untokenize [sentence])]
+    , Html.td [] (
+        if isBoring
+        then []
+        else
+          (fragsView "" results.before
+            :: List.map resultView results.results)
+        )
     ]
-    (List.concat
-      [ List.map fragView results.before
-      , List.map resultView results.results
-      ])
 
 view : Model -> Html Msg
 view { sentences } =
   Html.div
-    [ Html.Attributes.style "max-width" "50%"
+    [ Html.Attributes.style "background-color" "black"
+    , Html.Attributes.style "color" "white"
     ]
     [ Html.form []
         [ Html.textarea
             [ Html.Events.onInput Input
+            , Html.Attributes.style "background-color" "black"
+            , Html.Attributes.style "color" "white"
+            , Html.Attributes.style "width" "60em"
+            , Html.Attributes.style "height" "10em"
             ]
-            []
+            [ Html.text (Sentence.untokenize sentences)
+            ]
         ]
-    , List.map sentenceView sentences
-      |> Html.div []
+    , Html.table [] (List.map sentenceRow sentences)
     ]
 
 update : Msg -> Model -> (Model, Cmd Msg)

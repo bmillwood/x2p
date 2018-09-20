@@ -83,7 +83,7 @@ condition thisFrag remainingFrags =
   , thenBoring = remainingFrags
   }
 
-parse : Sentence.Sentence -> Results Code.Code
+parse : List Sentence.Fragment -> Results Code.Code
 parse fragments =
   case fragments of
     [] -> emptyResults
