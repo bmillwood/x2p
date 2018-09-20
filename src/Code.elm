@@ -4,8 +4,10 @@ import Sentence
 
 type alias Name = Sentence.Fragment
 
+type Call = Call Name (List Expr)
+
 type Expr
-  = ExprCall Name
+  = ExprCall Call
   | Value Name
 
 type Condition
@@ -15,7 +17,7 @@ type Condition
   | Or (List Condition)
 
 type Stmt
-  = StmtCall Name
+  = StmtCall Call
   | Pass
   | If Condition Code
 

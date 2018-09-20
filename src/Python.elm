@@ -16,14 +16,15 @@ name n =
       String.toLower first :: List.map titleCase rest
       |> String.concat
 
-call : Code.Name -> String
-call n = name n ++ "()"
+call : Code.Call -> String
+call (Code.Call n args) =
+  name n ++ "(" ++ String.join ", " (List.map expr args) ++ ")"
 
 expr : Code.Expr -> String
 expr e =
   case e of
     Code.Value n -> name n
-    Code.ExprCall n -> call n
+    Code.ExprCall c -> call c
 
 condition : Code.Condition -> String
 condition cond =
@@ -41,7 +42,7 @@ condition cond =
 stmt : Code.Stmt -> String
 stmt st =
   case st of
-    Code.StmtCall n -> call n
+    Code.StmtCall c -> call c
     Code.Pass -> "pass"
     Code.If cond then_ ->
       "if " ++ condition cond ++ ":\n"

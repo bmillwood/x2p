@@ -61,7 +61,7 @@ conditionAtom frag =
   in
   case breakList (\w -> Set.member w equalities) expFrag of
     (_, []) ->
-      Code.CondAtom (Code.ExprCall frag)
+      Code.CondAtom (Code.ExprCall (Code.Call frag []))
     (left, _ :: right) ->
       Code.Equal
         (Code.Value left)
@@ -102,7 +102,7 @@ parse fragments =
             (stmt, unparsed) =
               case dropInitialThen condResult.thenBoring of
                 [] -> (Code.Pass, [])
-                f :: fs -> (Code.StmtCall f, fs)
+                f :: fs -> (Code.StmtCall (Code.Call f []), fs)
         in
         prependInteresting
           [Code.If condResult.interesting [stmt]]
