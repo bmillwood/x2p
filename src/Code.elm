@@ -10,6 +10,9 @@ type Expr
 
 type Condition
   = CondAtom Expr
+  | Equal Expr Expr
+  | And (List Condition)
+  | Or (List Condition)
 
 type Stmt
   = StmtCall Name

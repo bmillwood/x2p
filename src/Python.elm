@@ -27,8 +27,16 @@ expr e =
 
 condition : Code.Condition -> String
 condition cond =
+  let
+      op nOp conds =
+        List.intersperse nOp (List.map condition conds)
+        |> String.join " "
+  in
   case cond of
     Code.CondAtom e -> expr e
+    Code.Equal e1 e2 -> expr e1 ++ " == " ++ expr e2
+    Code.And conds -> op "and" conds
+    Code.Or conds -> op "or" conds
 
 stmt : Code.Stmt -> String
 stmt st =
