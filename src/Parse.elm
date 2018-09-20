@@ -66,6 +66,7 @@ conditionExpr frag =
       equalities = Set.fromList [ "is", "are", "am" ]
   in
   case breakList (\w -> Set.member w equalities) expFrag of
+    ([], []) -> Code.CondExpr (Code.Bool True)
     (_, []) ->
       Code.CondExpr (Code.ExprCall (Code.Call (var frag) []))
     (left, _ :: right) ->
@@ -108,7 +109,10 @@ parse fragments =
             (stmt, unparsed) =
               case dropInitialThen condResult.thenBoring of
                 [] -> (Code.Pass, [])
-                f :: fs -> (Code.StmtCall (Code.Call (var f) []), fs)
+                f :: fs ->
+                  if List.all String.isEmpty f
+                  then (Code.Pass, fs)
+                  else (Code.StmtCall (Code.Call (var f) []), fs)
         in
         prependInteresting
           [Code.If condResult.interesting [stmt]]
