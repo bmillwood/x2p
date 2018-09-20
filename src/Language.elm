@@ -6,16 +6,16 @@ module Language exposing
   , renderCode
   )
 
-import C
+import Cpp
 import Code
 import Python
 
 type Language
-  = C
+  = Cpp
   | Python
 
 all : List Language
-all = [C, Python]
+all = [Cpp, Python]
 
 init : Language
 init = Python
@@ -23,11 +23,11 @@ init = Python
 toString : Language -> String
 toString lang =
   case lang of
-    C -> "C"
+    Cpp -> "C++"
     Python -> "Python"
 
 renderCode : Language -> Code.Code -> String
 renderCode lang =
   case lang of
-    C -> C.code
+    Cpp -> Cpp.code
     Python -> Python.code

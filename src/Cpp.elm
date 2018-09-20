@@ -1,4 +1,4 @@
-module C exposing (code)
+module Cpp exposing (code)
 
 import Code
 
