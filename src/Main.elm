@@ -21,7 +21,7 @@ type Msg
 
 init : () -> (Model, Cmd Msg)
 init () =
-  ( { sentences = Sentence.tokenize Corpus.clapYourHands }
+  ( { sentences = Sentence.tokenize Corpus.testCases }
   , Cmd.none
   )
 
