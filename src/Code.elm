@@ -1,7 +1,7 @@
 module Code exposing (..)
 
 type Name
-  = Var (List String)
+  = Var (List (List String))
   | SelfDot (List String)
 
 type Call = Call Name (List Expr)

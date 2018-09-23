@@ -19,7 +19,7 @@ nameFromComponents n =
 name : Code.Name -> String
 name n =
   case n of
-    Code.Var cs -> nameFromComponents cs
+    Code.Var css -> String.join "." (List.map nameFromComponents css)
     Code.SelfDot cs -> "this." ++ nameFromComponents cs
 
 call : Code.Call -> String

@@ -54,7 +54,7 @@ var : Sentence.Fragment -> Code.Name
 var frag =
   case frag of
     "I" :: rest -> Code.SelfDot rest
-    _ -> Code.Var frag
+    _ -> Code.Var [frag]
 
 call : Sentence.Fragment -> Code.Call
 call frag =
@@ -62,7 +62,7 @@ call frag =
       (con, rest) =
         case frag of
           "I" :: r -> (Code.SelfDot, r)
-          _ -> (Code.Var, frag)
+          _ -> ((\n -> Code.Var [n]), frag)
       noArg = Code.Call (con rest) []
   in
   case shatterList_ (\w -> w == "I") rest of
