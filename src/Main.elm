@@ -91,31 +91,31 @@ view { sentences, debug, language } =
             name = Language.toString lang
         in
         [ Html.br [] []
-        , Html.input
-            [ Html.Attributes.type_ "radio"
-            , Html.Attributes.name "language"
-            , Html.Attributes.value name
-            , Html.Attributes.checked (language == lang)
-            , Html.Events.onClick (SetLanguage lang)
+        , Html.label []
+            [ Html.input
+                [ Html.Attributes.type_ "radio"
+                , Html.Attributes.name "language"
+                , Html.Attributes.value name
+                , Html.Attributes.checked (language == lang)
+                , Html.Events.onClick (SetLanguage lang)
+                ]
+                []
+            , Html.text name
             ]
-            []
-        , Html.label
-            [ Html.Attributes.for name ]
-            [ Html.text name ]
         ]
       debugCheckbox =
         [ Html.br [] []
-        , Html.input
-            [ Html.Attributes.type_ "checkbox"
-            , Html.Attributes.name "debug"
-            , Html.Attributes.value "debug"
-            , Html.Attributes.checked debug
-            , Html.Events.onCheck SetDebug
+        , Html.label []
+            [ Html.input
+                [ Html.Attributes.type_ "checkbox"
+                , Html.Attributes.name "debug"
+                , Html.Attributes.value "debug"
+                , Html.Attributes.checked debug
+                , Html.Events.onCheck SetDebug
+                ]
+                []
+            , Html.text "Debug mode"
             ]
-            []
-        , Html.label
-            [ Html.Attributes.for "debug" ]
-            [ Html.text "Debug mode" ]
         ]
   in
   Html.div
