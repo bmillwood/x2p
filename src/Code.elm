@@ -2,7 +2,7 @@ module Code exposing (..)
 
 type Name
   = Var (List (List String))
-  | SelfDot (List String)
+  | SelfDot (List (List String))
 
 type Call = Call Name (List Expr)
 
@@ -11,11 +11,13 @@ type Expr
   | Value Name
   | Bool Bool
 
+type CondOp = And | Or
+
 type Condition
   = CondExpr Expr
   | Equal Bool Expr Expr
-  | And (List Condition)
-  | Or (List Condition)
+  | CondOp CondOp (List Condition)
+  | Not Condition
 
 type Stmt
   = StmtCall Call

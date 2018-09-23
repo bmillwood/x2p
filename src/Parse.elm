@@ -50,11 +50,11 @@ shatterList_ p xs =
     Just (before, _, after) ->
       before :: shatterList_ p after
 
-var : Sentence.Fragment -> Code.Name
-var frag =
-  case frag of
-    "I" :: rest -> Code.SelfDot rest
-    _ -> Code.Var [frag]
+var : List Sentence.Fragment -> Code.Name
+var frags =
+  case frags of
+    ("I" :: rest) :: others -> Code.SelfDot (rest :: others)
+    _ -> Code.Var frags
 
 call : Sentence.Fragment -> Code.Call
 call frag =
@@ -62,13 +62,18 @@ call frag =
       (con, rest) =
         case frag of
           "I" :: r -> (Code.SelfDot, r)
-          _ -> ((\n -> Code.Var [n]), frag)
-      noArg = Code.Call (con rest) []
+          _ -> (Code.Var, frag)
+      noArg = Code.Call (con [rest]) []
   in
   case shatterList_ (\w -> w == "I") rest of
     [] -> noArg
     [_] -> noArg
-    r :: rs -> Code.Call (con r) (List.map (Code.Value << Code.SelfDot) rs)
+    r :: rs ->
+      Code.Call
+        (con [r])
+        (List.map
+          (\n -> Code.Value (Code.SelfDot [n]))
+          rs)
 
 conditionExpr : Sentence.Fragment -> Code.Condition
 conditionExpr frag =
@@ -94,16 +99,31 @@ conditionExpr frag =
             case expandContractedEquality word of
               Just prevWord -> Just (Just [prevWord], False)
               Nothing -> Nothing
+      findNot word =
+        if word == "not"
+        then Just []
+        else if String.right 3 word == "n't"
+        then Just [String.dropRight 3 word]
+        else Nothing
   in
   case breakList findEquality frag of
     Nothing ->
-      if List.isEmpty frag
-      then Code.CondExpr (Code.Bool True)
-      else Code.CondExpr (Code.ExprCall (call frag))
+      case breakList findNot frag of
+        Nothing ->
+          if List.isEmpty frag
+          then Code.CondExpr (Code.Bool True)
+          else Code.CondExpr (Code.ExprCall (call frag))
+        Just (beforeNot, maybeWord, afterNot) ->
+          let
+              object = beforeNot
+              method = maybeWord ++ afterNot
+              callexpr = Code.ExprCall (Code.Call (var [object, method]) [])
+          in
+          Code.Not (Code.CondExpr callexpr)
     Just (left, (leftSuffix, negated), right) ->
-      Code.Equal (not negated)
-        (Code.Value (var (left ++ Maybe.withDefault [] leftSuffix)))
-        (Code.Value (var right))
+      Code.Equal (not negated /= (List.head right == Just "not"))
+        (Code.Value (var [left ++ Maybe.withDefault [] leftSuffix]))
+        (Code.Value (var [right]))
 
 conditionFrag : Sentence.Fragment -> Code.Condition
 conditionFrag frag =
@@ -114,7 +134,9 @@ conditionFrag frag =
           [one] -> k one
           many -> opCon (List.map k many)
   in
-  op "or" Code.Or False (op "and" Code.And True conditionExpr) frag
+  op "or" (Code.CondOp Code.Or) False
+    (op "and" (Code.CondOp Code.And) True conditionExpr)
+    frag
 
 condition
   : Sentence.Fragment

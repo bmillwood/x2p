@@ -2,25 +2,29 @@ module Python exposing (code)
 
 import Code
 
-nameFromComponents : List String -> String
-nameFromComponents n =
-  case List.map (String.filter Char.isAlphaNum) n of
-    [] -> "None"
-    first :: rest ->
-      let
-          titleCase str =
-            case String.uncons str of
-              Nothing -> ""
-              Just (s, tr) -> String.cons (Char.toUpper s) tr
-      in
-      String.toLower first :: List.map titleCase rest
-      |> String.concat
+nameFromComponents : List (List String) -> String
+nameFromComponents ns =
+  let
+    each n =
+      case List.map (String.filter Char.isAlphaNum) n of
+        [] -> "None"
+        first :: rest ->
+          let
+              titleCase str =
+                case String.uncons str of
+                  Nothing -> ""
+                  Just (s, tr) -> String.cons (Char.toUpper s) tr
+          in
+          String.toLower first :: List.map titleCase rest
+          |> String.concat
+  in
+  String.join "." (List.map each ns)
 
 name : Code.Name -> String
 name n =
   case n of
-    Code.Var css -> String.join "." (List.map nameFromComponents css)
-    Code.SelfDot cs -> "self." ++ nameFromComponents cs
+    Code.Var css -> nameFromComponents css
+    Code.SelfDot css -> nameFromComponents (["self"] :: css)
 
 call : Code.Call -> String
 call (Code.Call n args) =
@@ -45,8 +49,10 @@ condition cond =
     Code.CondExpr e -> expr e
     Code.Equal True  e1 e2 -> expr e1 ++ " == " ++ expr e2
     Code.Equal False e1 e2 -> expr e1 ++ " != " ++ expr e2
-    Code.And conds -> op "and" conds
-    Code.Or conds -> op "or" conds
+    Code.CondOp Code.And conds -> op "and" conds
+    Code.CondOp Code.Or  conds -> op "or" conds
+    Code.Not (Code.CondExpr e) -> "not " ++ expr e
+    Code.Not c -> "not (" ++ condition c ++ ")"
 
 stmt : Code.Stmt -> String
 stmt st =
