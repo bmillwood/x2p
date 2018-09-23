@@ -1,6 +1,6 @@
 module Parse exposing (parse)
 
-import Set
+import Dict
 
 import Code
 import Sentence
@@ -28,24 +28,27 @@ prependInteresting a { before, results } =
   , results = { interesting = a, thenBoring = before } :: results
   }
 
-breakList : (a -> Bool) -> List a -> (List a, List a)
-breakList p xs =
+breakList : (a -> Maybe b) -> List a -> Maybe (List a, b, List a)
+breakList f xs =
   case xs of
-    [] -> ([], [])
+    [] -> Nothing
     x :: rest ->
-      if p x
-      then ([], xs)
-      else
-        let
-            (before, after) = breakList p rest
-        in
-            (x :: before, after)
+      case f x of
+        Just b -> Just ([], b, rest)
+        Nothing ->
+          Maybe.map
+            (\(before, at, after) -> (x :: before, at, after))
+            (breakList f rest)
 
-shatterList : (a -> Bool) -> List a -> List (List a)
-shatterList p xs =
-  case breakList p xs of
-    (left, []) -> [left]
-    (left, _ :: right) -> left :: shatterList p right
+breakList_ : (a -> Bool) -> List a -> Maybe (List a, a, List a)
+breakList_ p = breakList (\x -> if p x then Just x else Nothing)
+
+shatterList_ : (a -> Bool) -> List a -> List (List a)
+shatterList_ p xs =
+  case breakList_ p xs of
+    Nothing -> [xs]
+    Just (before, _, after) ->
+      before :: shatterList_ p after
 
 var : Sentence.Fragment -> Code.Name
 var frag =
@@ -62,7 +65,7 @@ call frag =
           _ -> (Code.Var, frag)
       noArg = Code.Call (con rest) []
   in
-  case shatterList (\w -> w == "I") rest of
+  case shatterList_ (\w -> w == "I") rest of
     [] -> noArg
     [_] -> noArg
     r :: rs -> Code.Call (con r) (List.map (Code.Value << Code.SelfDot) rs)
@@ -70,27 +73,41 @@ call frag =
 conditionExpr : Sentence.Fragment -> Code.Condition
 conditionExpr frag =
   let
-      expandContraction w =
+      expandContractedEquality w =
         if String.right 3 w == "'re"
-        then [String.dropRight 3 w, "are"]
+        then Just (String.dropRight 3 w)
         else if String.right 2 w == "'m"
-        then [String.dropRight 2 w, "am"]
-        else [w]
-      expFrag = List.concatMap expandContraction frag
-      equalities = Set.fromList [ "is", "are", "am" ]
+        then Just (String.dropRight 2 w)
+        else Nothing
+      equalities =
+        Dict.fromList
+          [ ("is",  False)
+          , ("are", False)
+          , ("am",  False)
+          , ("isn't",  True)
+          , ("aren't", True)
+          ]
+      findEquality word =
+        case Dict.get word equalities of
+          Just negated -> Just (Nothing, negated)
+          Nothing ->
+            case expandContractedEquality word of
+              Just prevWord -> Just (Just [prevWord], False)
+              Nothing -> Nothing
   in
-  case breakList (\w -> Set.member w equalities) expFrag of
-    ([], []) -> Code.CondExpr (Code.Bool True)
-    (_, []) ->
-      Code.CondExpr (Code.ExprCall (call frag))
-    (left, _ :: right) ->
-      Code.Equal
-        (Code.Value (var left))
+  case breakList findEquality frag of
+    Nothing ->
+      if List.isEmpty frag
+      then Code.CondExpr (Code.Bool True)
+      else Code.CondExpr (Code.ExprCall (call frag))
+    Just (left, (leftSuffix, negated), right) ->
+      Code.Equal (not negated)
+        (Code.Value (var (left ++ Maybe.withDefault [] leftSuffix)))
         (Code.Value (var right))
 
 conditionFrag : Sentence.Fragment -> Code.Condition
 conditionFrag frag =
-  case shatterList (\w -> w == "and") frag of
+  case shatterList_ (\w -> w == "and") frag of
     [] -> Code.CondExpr (Code.Bool True)
     [one] -> conditionExpr one
     conjuncts -> Code.And (List.map conditionExpr conjuncts)

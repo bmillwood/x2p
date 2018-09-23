@@ -43,7 +43,8 @@ condition cond =
   in
   case cond of
     Code.CondExpr e -> expr e
-    Code.Equal e1 e2 -> expr e1 ++ " == " ++ expr e2
+    Code.Equal True  e1 e2 -> expr e1 ++ " == " ++ expr e2
+    Code.Equal False e1 e2 -> expr e1 ++ " != " ++ expr e2
     Code.And conds -> op "and" conds
     Code.Or conds -> op "or" conds
 

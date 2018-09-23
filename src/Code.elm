@@ -13,7 +13,7 @@ type Expr
 
 type Condition
   = CondExpr Expr
-  | Equal Expr Expr
+  | Equal Bool Expr Expr
   | And (List Condition)
   | Or (List Condition)
 
