@@ -107,46 +107,59 @@ conditionExpr frag =
 
 conditionFrag : Sentence.Fragment -> Code.Condition
 conditionFrag frag =
-  case shatterList_ (\w -> w == "and") frag of
-    [] -> Code.CondExpr (Code.Bool True)
-    [one] -> conditionExpr one
-    conjuncts -> Code.And (List.map conditionExpr conjuncts)
+  let
+      op opName opCon opZero k subFrag =
+        case shatterList_ (\w -> w == opName) subFrag of
+          [] -> Code.CondExpr (Code.Bool opZero)
+          [one] -> k one
+          many -> opCon (List.map k many)
+  in
+  op "or" Code.Or False (op "and" Code.And True conditionExpr) frag
 
 condition
   : Sentence.Fragment
  -> List Sentence.Fragment
  -> Result Code.Condition
 condition thisFrag remainingFrags =
-  { interesting = conditionFrag thisFrag
-  , thenBoring = remainingFrags
-  }
+  case breakList_ (\w -> w == "then") thisFrag of
+    Nothing ->
+      { interesting = conditionFrag thisFrag
+      , thenBoring = remainingFrags
+      }
+    Just (cond, _, body) ->
+      { interesting = conditionFrag cond
+      , thenBoring = body :: remainingFrags
+      }
 
 parse : List Sentence.Fragment -> Results Code.Code
 parse fragments =
   case fragments of
     [] -> emptyResults
     [] :: frags -> parse frags
-    (word :: fws) :: frags ->
-      if String.toLower word == "if"
-      then 
-        let
-            condResult = condition fws frags
-            dropInitialThen fs =
-              case fs of
-                [] -> []
-                [] :: r -> dropInitialThen r
-                ("then" :: f) :: r -> f :: r
-                _ -> fs
-            (stmt, unparsed) =
-              case dropInitialThen condResult.thenBoring of
-                [] -> (Code.Pass, [])
-                f :: fs ->
-                  if List.all String.isEmpty f
-                  then (Code.Pass, fs)
-                  else (Code.StmtCall (call f), fs)
-        in
-        prependInteresting
-          [Code.If condResult.interesting [stmt]]
-          (parse unparsed)
-      else
-        prependBoring (word :: fws) (parse frags)
+    frag :: frags ->
+      case breakList_ (\word -> String.toLower word == "if") frag of
+        Nothing -> prependBoring frag (parse frags)
+        Just ([], _, cond) ->
+          let
+              condResult = condition cond frags
+              dropInitialThen fs =
+                case fs of
+                  [] -> []
+                  [] :: r -> dropInitialThen r
+                  ("then" :: f) :: r -> f :: r
+                  _ -> fs
+              (stmt, unparsed) =
+                case dropInitialThen condResult.thenBoring of
+                  [] -> (Code.Pass, [])
+                  f :: fs ->
+                    if List.all String.isEmpty f
+                    then (Code.Pass, fs)
+                    else (Code.StmtCall (call f), fs)
+          in
+          prependInteresting
+            [Code.If condResult.interesting [stmt]]
+            (parse unparsed)
+        Just (before, _, cond) ->
+          prependInteresting
+            [Code.If (conditionFrag cond) [Code.StmtCall (call before)]]
+            (parse frags)
